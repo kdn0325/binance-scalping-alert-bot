@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 
-import { BybitService } from "./services/bybitService";
+import { BinanceService } from "./services/binanceService";
 import { TelegramService } from "./services/telegramService";
 
 dotenv.config();
@@ -15,13 +15,15 @@ if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
   process.exit(1);
 }
 
-// 설정
-const PUMP_THRESHOLD = 5; // 급등 기준 (%)
-const MIN_VOLUME = 100000; // 최소 거래량 ($100K)
-const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5분마다 체크
+// 단타 설정
+const MIN_CHANGE_5MIN = 2; // 5분 2% 이상 급등
+const MIN_VOLUME_SPIKE = 3; // 평균 대비 3배 이상 볼륨
+const MIN_VOLUME = 500000; // 최소 $500K 거래량
+const CHECK_INTERVAL_MS = 60 * 1000; // 1분마다 체크 (초단타)
 
-const bybitService = new BybitService({
-  pumpThreshold: PUMP_THRESHOLD,
+const binanceService = new BinanceService({
+  minChange5min: MIN_CHANGE_5MIN,
+  minVolumeSpike: MIN_VOLUME_SPIKE,
   minVolume: MIN_VOLUME,
 });
 
@@ -30,48 +32,45 @@ const telegramService = new TelegramService({
   chatId: TELEGRAM_CHAT_ID,
 });
 
-// 급등 코인 스캔 → 알림
-async function scanPumpingCoins(): Promise<void> {
+async function scanScalpingCoins(): Promise<void> {
   try {
-    console.log(
-      `\n🔍 [${new Date().toLocaleString("ko-KR", {
-        timeZone: "Asia/Seoul",
-      })}] 급등 코인 스캔 중...`
-    );
+    const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+    console.log(`\n⚡ [${now}] 단타 급등 스캔...`);
 
-    const pumpingCoins = await bybitService.findPumpingCoins();
+    const scalpingCoins = await binanceService.findScalpingCoins();
 
-    if (pumpingCoins.length === 0) {
-      console.log("📊 현재 급등 코인 없음");
+    if (scalpingCoins.length === 0) {
+      console.log("📊 급등 신호 없음");
       return;
     }
 
-    console.log(
-      `🚀 급등 코인 ${pumpingCoins.length}개 발견: ${pumpingCoins
-        .slice(0, 5)
-        .map((c) => `${c.symbol} +${c.change24hPercent.toFixed(2)}%`)
-        .join(", ")}`
-    );
+    console.log(`🔥 발견: ${scalpingCoins.length}개`);
+    scalpingCoins.slice(0, 3).forEach((coin) => {
+      console.log(
+        `   ${coin.symbol}: 5min +${coin.change5min.toFixed(
+          2
+        )}% | Vol ${coin.volumeSpike.toFixed(1)}x | RSI ${coin.rsi.toFixed(0)}`
+      );
+    });
 
-    await telegramService.sendPumpAlert(pumpingCoins);
-    console.log("✅ 알림 완료\n");
+    await telegramService.sendScalpingAlert(scalpingCoins);
+    console.log("✅ 알림 전송");
   } catch (error) {
     console.error("❌ 스캔 오류:", error);
   }
 }
 
 async function startBot(): Promise<void> {
-  console.log("🚀 바이비트 급등 코인 알림 봇 시작");
-  console.log(`📊 급등 기준: ${PUMP_THRESHOLD}% 이상`);
-  console.log(`💰 최소 거래량: $${(MIN_VOLUME / 1000).toFixed(0)}K`);
-  console.log(`⏰ 체크 간격: ${CHECK_INTERVAL_MS / 1000 / 60}분\n`);
+  console.log("⚡ 바이낸스 단타 급등 알림 봇");
+  console.log(`📊 조건: 5분 ${MIN_CHANGE_5MIN}%↑ + 볼륨 ${MIN_VOLUME_SPIKE}배`);
+  console.log(`⏰ 체크: ${CHECK_INTERVAL_MS / 1000}초마다`);
+  console.log(`🎯 목표: +3% 익절 | 손절: -2%\n`);
 
-  await scanPumpingCoins();
-
-  setInterval(scanPumpingCoins, CHECK_INTERVAL_MS);
+  await scanScalpingCoins();
+  setInterval(scanScalpingCoins, CHECK_INTERVAL_MS);
 }
 
 startBot().catch((error) => {
-  console.error("❌ 봇 시작 실패:", error);
+  console.error("❌ 봇 실패:", error);
   process.exit(1);
 });
