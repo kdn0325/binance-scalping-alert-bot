@@ -15,9 +15,9 @@ if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
   process.exit(1);
 }
 
-const MIN_CHANGE_5MIN = 1.5; // 5분 1.5% 이상 (완화)
-const MIN_VOLUME_SPIKE = 2; // 평균 대비 2배 이상 (완화)
-const MIN_VOLUME = 100000; // 최소 $100K (완화)
+const MIN_CHANGE_5MIN = 0.8; // 5분 0.8% 이상 (더 완화)
+const MIN_VOLUME_SPIKE = 1.3; // 평균 대비 1.3배 이상 (더 완화)
+const MIN_VOLUME = 50000; // 최소 $50K (더 완화)
 const CHECK_INTERVAL_MS = 60 * 1000; // 1분마다 체크
 
 const binanceService = new BinanceService({
