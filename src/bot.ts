@@ -15,11 +15,10 @@ if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
   process.exit(1);
 }
 
-// 단타 설정
-const MIN_CHANGE_5MIN = 2; // 5분 2% 이상 급등
-const MIN_VOLUME_SPIKE = 3; // 평균 대비 3배 이상 볼륨
-const MIN_VOLUME = 500000; // 최소 $500K 거래량
-const CHECK_INTERVAL_MS = 60 * 1000; // 1분마다 체크 (초단타)
+const MIN_CHANGE_5MIN = 1.5; // 5분 1.5% 이상 (완화)
+const MIN_VOLUME_SPIKE = 2; // 평균 대비 2배 이상 (완화)
+const MIN_VOLUME = 100000; // 최소 $100K (완화)
+const CHECK_INTERVAL_MS = 60 * 1000; // 1분마다 체크
 
 const binanceService = new BinanceService({
   minChange5min: MIN_CHANGE_5MIN,
@@ -35,17 +34,19 @@ const telegramService = new TelegramService({
 async function scanScalpingCoins(): Promise<void> {
   try {
     const now = new Date().toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
-    console.log(`\n⚡ [${now}] 단타 급등 스캔...`);
+    console.log(`\n⚡ [${now}] 스캔 중...`);
 
     const scalpingCoins = await binanceService.findScalpingCoins();
 
+    console.log(`📊 체크 완료 | 발견: ${scalpingCoins.length}개`);
+
     if (scalpingCoins.length === 0) {
-      console.log("📊 급등 신호 없음");
       return;
     }
 
-    console.log(`🔥 발견: ${scalpingCoins.length}개`);
-    scalpingCoins.slice(0, 3).forEach((coin) => {
+    // 상위 5개 로그
+    console.log("🔥 급등 코인:");
+    scalpingCoins.slice(0, 5).forEach((coin) => {
       console.log(
         `   ${coin.symbol}: 5min +${coin.change5min.toFixed(
           2
@@ -54,7 +55,7 @@ async function scanScalpingCoins(): Promise<void> {
     });
 
     await telegramService.sendScalpingAlert(scalpingCoins);
-    console.log("✅ 알림 전송");
+    console.log("✅ 알림 전송 완료");
   } catch (error) {
     console.error("❌ 스캔 오류:", error);
   }
@@ -62,7 +63,10 @@ async function scanScalpingCoins(): Promise<void> {
 
 async function startBot(): Promise<void> {
   console.log("⚡ 바이낸스 단타 급등 알림 봇");
-  console.log(`📊 조건: 5분 ${MIN_CHANGE_5MIN}%↑ + 볼륨 ${MIN_VOLUME_SPIKE}배`);
+  console.log(
+    `📊 조건: 5분 ${MIN_CHANGE_5MIN}%↑ + 볼륨 ${MIN_VOLUME_SPIKE}배↑`
+  );
+  console.log(`💰 최소 거래량: $${(MIN_VOLUME / 1000).toFixed(0)}K`);
   console.log(`⏰ 체크: ${CHECK_INTERVAL_MS / 1000}초마다`);
   console.log(`🎯 목표: +3% 익절 | 손절: -2%\n`);
 
