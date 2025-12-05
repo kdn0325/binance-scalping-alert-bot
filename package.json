@@ -1,7 +1,7 @@
 {
-  "name": "bybit-alert-bot",
+  "name": "binance-alert-bot",
   "version": "1.0.0",
-  "description": "바이비트 급등 코인 실시간 알림 봇",
+  "description": "바이낸스 급등 코인 실시간 알림 봇",
   "main": "dist/bot.js",
   "scripts": {
     "start": "tsx src/bot.ts",
@@ -10,7 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "keywords": [
-    "bybit",
+    "binance",
     "crypto",
     "telegram",
     "bot",
