@@ -64,14 +64,13 @@ export class BinanceService {
 
       const tickers = response.data
         .filter((t) => t.symbol.endsWith("USDT"))
-        .filter((t) => tradingSymbols.has(t.symbol)) // 거래 가능한 코인만
+        .filter((t) => tradingSymbols === null || tradingSymbols.has(t.symbol)) // 거래 가능한 코인만
         .filter((t) => {
           const volume = parseFloat(t.quoteVolume);
           const change24h = parseFloat(t.priceChangePercent);
           // 24시간 0% 이상 + 최소 거래량
           return volume >= this.config.minVolume && change24h >= 0;
-        })
-        .slice(0, 50); // 상위 50개만 체크
+        }); // 모든 후보 스캔 (제한 없음)
 
       console.log(`   📋 후보: ${tickers.length}개 (거래 가능 + 24h 0%↑)`);
 
