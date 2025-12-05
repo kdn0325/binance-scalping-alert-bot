@@ -12,19 +12,21 @@ export interface BinanceTickerResponse {
   prevClosePrice: string;
 }
 
-export interface BinanceKlineResponse {
-  openTime: number;
-  open: string;
-  high: string;
-  low: string;
-  close: string;
-  volume: string;
-  closeTime: number;
-  quoteVolume: string;
-  trades: number;
-  takerBuyBaseVolume: string;
-  takerBuyQuoteVolume: string;
-}
+// Binance Kline은 배열로 응답 [openTime, open, high, low, close, volume, closeTime, quoteVolume, ...]
+export type BinanceKlineResponse = [
+  number, // 0: openTime
+  string, // 1: open
+  string, // 2: high
+  string, // 3: low
+  string, // 4: close
+  string, // 5: volume
+  number, // 6: closeTime
+  string, // 7: quoteVolume
+  number, // 8: trades
+  string, // 9: takerBuyBaseVolume
+  string, // 10: takerBuyQuoteVolume
+  string // 11: ignore
+];
 
 export interface CoinPrice {
   symbol: string;
