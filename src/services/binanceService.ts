@@ -62,19 +62,35 @@ export class BinanceService {
         `${BINANCE_API_BASE_URL}/ticker/24hr`
       );
 
-      const tickers = response.data
-        .filter((t) => t.symbol.endsWith("USDT"))
-        .filter((t) => tradingSymbols === null || tradingSymbols.has(t.symbol)) // 거래 가능한 코인만
-        .filter((t) => {
-          const volume = parseFloat(t.quoteVolume);
-          const change24h = parseFloat(t.priceChangePercent);
-          // 24시간 0% 이상 + 최소 거래량
-          return volume >= this.config.minVolume && change24h >= 0;
-        }); // 모든 후보 스캔 (제한 없음)
+      // 모든 USDT 페어
+      const allUsdt = response.data.filter((t) => t.symbol.endsWith("USDT"));
 
-      console.log(`   📋 후보: ${tickers.length}개 (거래 가능 + 24h 0%↑)`);
+      // 거래 가능한 코인만
+      const tradingOnly = allUsdt.filter(
+        (t) => tradingSymbols === null || tradingSymbols.has(t.symbol)
+      );
+
+      // 최소 거래량 + 상승 중인 코인
+      const tickers = tradingOnly.filter((t) => {
+        const volume = parseFloat(t.quoteVolume);
+        const change24h = parseFloat(t.priceChangePercent);
+        return volume >= this.config.minVolume && change24h >= 0;
+      });
+
+      console.log(`   📊 전체 USDT: ${allUsdt.length}개`);
+      console.log(`   ✅ 거래 가능: ${tradingOnly.length}개`);
+      console.log(
+        `   💰 거래량 $${(this.config.minVolume / 1000).toFixed(0)}K↑: ${
+          tickers.length
+        }개`
+      );
+      console.log(`   📋 후보 (24h 0%↑): ${tickers.length}개`);
 
       const scalpingCoins: CoinPrice[] = [];
+      let checked = 0;
+      let passChange = 0;
+      let passVolume = 0;
+      let passRsi = 0;
 
       // 2단계: 5분 데이터 상세 분석
       for (const ticker of tickers) {
@@ -84,7 +100,13 @@ export class BinanceService {
         const changes = await this.getShortTermChanges(symbol, currentPrice);
         if (!changes) continue;
 
+        checked++;
         const { change5min, change15min, volumeSpike, rsi } = changes;
+
+        // 각 조건별 통과 개수 추적
+        if (change5min >= this.config.minChange5min) passChange++;
+        if (volumeSpike >= this.config.minVolumeSpike) passVolume++;
+        if (rsi < 80) passRsi++;
 
         // 단타 조건 체크
         if (
@@ -106,6 +128,14 @@ export class BinanceService {
           });
         }
       }
+
+      // 상세 통계
+      console.log(`   🔍 5분 데이터 체크: ${checked}개`);
+      console.log(`   📈 5분 ${this.config.minChange5min}%↑: ${passChange}개`);
+      console.log(
+        `   🔥 볼륨 ${this.config.minVolumeSpike}배↑: ${passVolume}개`
+      );
+      console.log(`   📊 RSI <80: ${passRsi}개`);
 
       // 5분 변동률 높은 순 정렬
       return scalpingCoins.sort((a, b) => b.change5min - a.change5min);
